@@ -97,7 +97,7 @@ class MainViewModel {
             } catch (e: Exception) {
                 isLoading = false
                 loadProgress = 0f
-                errorMessage = e.message ?: "Unknown error while reading file"
+                errorMessage = "Database Error: ${e.message ?: e.toString()}"
                 e.printStackTrace()
             }
         }
@@ -153,7 +153,12 @@ class MainViewModel {
     }
 
     fun clear() {
-        repository.clearDatabase()
+        try {
+            repository.clearDatabase()
+        } catch (e: Exception) {
+            errorMessage = "Failed to clear database: ${e.message ?: e.toString()}"
+            e.printStackTrace()
+        }
         headers = emptyList()
         currentPageData = emptyList()
         totalCount = 0
@@ -175,14 +180,18 @@ class MainViewModel {
         suggestionJob?.cancel()
         val effectiveScope = scope ?: CoroutineScope(Dispatchers.IO + Job())
         suggestionJob = effectiveScope.launch(Dispatchers.IO) {
-            val newSuggestions = mutableMapOf<Int, List<String>>()
-            newFilters.forEachIndexed { index, rule ->
-                if (rule.first == "SALES_STORE" || rule.first == "CUSTOMER_NUMBER") {
-                    val constraints = newFilters.filterIndexed { i, _ -> i != index }
-                    newSuggestions[index] = repository.getUniqueValues(rule.first, constraints)
+            try {
+                val newSuggestions = mutableMapOf<Int, List<String>>()
+                newFilters.forEachIndexed { index, rule ->
+                    if (rule.first == "SALES_STORE" || rule.first == "CUSTOMER_NUMBER") {
+                        val constraints = newFilters.filterIndexed { i, _ -> i != index }
+                        newSuggestions[index] = repository.getUniqueValues(rule.first, constraints)
+                    }
                 }
+                dynamicSuggestions = newSuggestions
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            dynamicSuggestions = newSuggestions
         }
     }
 
@@ -211,7 +220,8 @@ class MainViewModel {
 
     private fun getDbPath(): String {
         val userHome = System.getProperty("user.home")
-        return "$userHome/.excelapplicationapp/data.db"
+        val dir = File(userHome, ".excelapplicationapp")
+        return File(dir, "data.db").absolutePath
     }
 
     companion object {

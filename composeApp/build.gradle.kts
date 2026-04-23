@@ -47,6 +47,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe)
             packageName = "reportflux"
             packageVersion = "1.0.0"
+            modules("java.sql")
         }
     }
 }
