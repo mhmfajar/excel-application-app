@@ -60,6 +60,7 @@ class MainViewModel {
     private var suggestionJob: Job? = null
 
     fun load(file: File, coroutineScope: CoroutineScope) {
+        loadJob?.cancel()
         loadJob = coroutineScope.launch(Dispatchers.IO) {
             isLoading = true
             loadProgress = 0f
@@ -75,10 +76,7 @@ class MainViewModel {
                 if (data.isNotEmpty()) {
                     headers = RowDataReport.STATIC_HEADERS
 
-                    val dbPath = getDbPath()
-                    File(dbPath).parentFile?.mkdirs()
-
-                    dbHelper.connect(dbPath)
+                    dbHelper.connect(getDbPath())
                     dbHelper.createTables()
                     repository.clearDatabase()
                     repository.saveData(data) { dbProgress ->
@@ -170,7 +168,6 @@ class MainViewModel {
 
     /**
      * Updates draft filters and refreshes dynamic suggestions.
-     * Uses the passed coroutineScope (or creates a supervised one) to avoid leaking.
      */
     fun updateDraftFilters(newFilters: List<Pair<String, String>>, scope: CoroutineScope? = null) {
         draftFilters = newFilters
@@ -208,27 +205,9 @@ class MainViewModel {
         loadPage(0)
     }
 
-    fun getPivotData(): List<PivotSummary> {
-        val allData = if (currentFilters.isNotEmpty()) {
-            repository.filterData(currentFilters)
-        } else {
-            repository.getAllData()
-        }
-
-        return allData.groupBy { it.invoiceNumber ?: "Unknown" }
-            .map { (invoice, rows) ->
-                val firstRow = rows.first()
-                PivotSummary(
-                    salesStore = firstRow.salesStore ?: "",
-                    invoiceNumber = invoice,
-                    customerNumber = firstRow.customerNumber ?: "",
-                    customerName = firstRow.customerName ?: "",
-                    unitBisnis = firstRow.unitBisnis ?: "",
-                    trxDate = firstRow.trxDate ?: "",
-                    totalAmountPpn = rows.sumOf { it.totalAmountPpn?.toDoubleOrNull() ?: 0.0 }
-                )
-            }
-    }
+    /** Fetches pivot data using SQL-level GROUP BY aggregation. */
+    fun getPivotData(): List<PivotSummary> =
+        repository.getPivotSummaries(currentFilters)
 
     private fun getDbPath(): String {
         val userHome = System.getProperty("user.home")

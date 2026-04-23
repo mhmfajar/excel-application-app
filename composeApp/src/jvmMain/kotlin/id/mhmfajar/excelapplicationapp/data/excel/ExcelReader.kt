@@ -9,20 +9,19 @@ import java.io.File
 class ExcelReader {
 
     fun read(file: File, onProgress: (Float) -> Unit = {}): List<RowDataReport> {
-        val result = mutableListOf<RowDataReport>()
-
-        file.inputStream().use { fis ->
+        return file.inputStream().use { fis ->
             val workbook = XSSFWorkbook(fis)
             try {
                 val sheet = workbook.getSheetAt(0)
                 val totalRows = sheet.lastRowNum
 
-                if (totalRows <= 0) return emptyList()
+                if (totalRows <= 0) return@use emptyList()
 
                 val headerRow = sheet.getRow(0)
                 val headers = headerRow.map { it.toString() }
-
                 val headerIndices = resolveHeaderIndices(headers)
+
+                val result = ArrayList<RowDataReport>(totalRows)
 
                 for (i in 1..totalRows) {
                     val row = sheet.getRow(i) ?: continue
@@ -46,12 +45,12 @@ class ExcelReader {
                     val progress = (i.toFloat() / totalRows) * 100f
                     onProgress(progress)
                 }
+
+                result
             } finally {
                 workbook.close()
             }
         }
-
-        return result
     }
 
     /**

@@ -49,5 +49,20 @@ data class RowDataReport(
             "PPN",
             "TOTAL_AMOUNT+PPN"
         )
+
+        /** Single source of truth for header → DB column name mapping. */
+        val HEADER_TO_DB_COLUMN = mapOf(
+            "SALES_STORE" to "sales_store",
+            "CUSTOMER_NAME" to "customer_name",
+            "INVOICE_NUMBER" to "invoice_number",
+            "CUSTOMER_NUMBER" to "customer_number",
+            "UNIT_BISNIS" to "unit_bisnis",
+            "TRX_DATE" to "trx_date",
+            "DESCRIPTION" to "description",
+            "AMOUNT" to "amount",
+            "TAX_CODE" to "tax_code",
+            "PPN" to "ppn",
+            "TOTAL_AMOUNT+PPN" to "total_amount_ppn"
+        )
     }
 }
