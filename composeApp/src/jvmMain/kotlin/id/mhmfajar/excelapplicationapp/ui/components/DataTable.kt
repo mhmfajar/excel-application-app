@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.mhmfajar.excelapplicationapp.domain.model.RowDataReport
 import id.mhmfajar.excelapplicationapp.util.NumberFormatter
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 
 @Composable
 fun DataTable(
@@ -26,24 +28,18 @@ fun DataTable(
     data: List<RowDataReport>,
     onHeaderClick: (String) -> Unit,
     sortRules: List<Pair<String, Boolean>>,
-    onEndReached: () -> Unit
+    onEndReached: () -> Unit,
+    selectedIds: Set<Int>,
+    onToggleSelection: (Int) -> Unit,
+    onToggleAllSelection: (Boolean) -> Unit,
+    isAllSelected: Boolean
 ) {
+    val checkboxColumnWidth = 50.dp
     val columnWidth = 170.dp
     val listState = rememberLazyListState()
     val horizontalScrollState = rememberScrollState()
 
-    val isEndReached by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (layoutInfo.totalItemsCount == 0 || visibleItemsInfo.isEmpty()) false
-            else visibleItemsInfo.last().index >= layoutInfo.totalItemsCount - 2
-        }
-    }
-
-    LaunchedEffect(isEndReached) {
-        if (isEndReached) onEndReached()
-    }
+    InfiniteScrollEffect(listState = listState, onEndReached = onEndReached)
 
     Column(
         modifier = Modifier
@@ -51,7 +47,25 @@ fun DataTable(
             .horizontalScroll(horizontalScrollState)
     ) {
         // Header row
-        Row(modifier = Modifier.background(MaterialTheme.colorScheme.primary)) {
+        Row(
+            modifier = Modifier.background(MaterialTheme.colorScheme.primary),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.width(checkboxColumnWidth).padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Checkbox(
+                    checked = isAllSelected,
+                    onCheckedChange = { onToggleAllSelection(it) },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.onPrimary,
+                        uncheckedColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                        checkmarkColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+
             headers.forEach { header ->
                 Row(
                     modifier = Modifier
@@ -82,7 +96,20 @@ fun DataTable(
                 else
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
 
-                Row(modifier = Modifier.background(rowBackground)) {
+                Row(
+                    modifier = Modifier.background(rowBackground),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier.width(checkboxColumnWidth).padding(horizontal = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Checkbox(
+                            checked = selectedIds.contains(row.id),
+                            onCheckedChange = { row.id?.let { onToggleSelection(it) } }
+                        )
+                    }
+
                     headers.forEach { key ->
                         val value = row.getFieldByHeader(key)
                         Text(
@@ -98,22 +125,3 @@ fun DataTable(
     }
 }
 
-@Composable
-fun SortIndicator(
-    header: String,
-    sortRules: List<Pair<String, Boolean>>,
-    color: androidx.compose.ui.graphics.Color
-) {
-    val sortRule = sortRules.find { it.first == header }
-    if (sortRule != null) {
-        val index = sortRules.indexOf(sortRule)
-        val sortIndicator = (if (sortRule.second) " ↑" else " ↓") +
-                if (sortRules.size > 1) "${index + 1}" else ""
-        Text(
-            text = sortIndicator,
-            color = color,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}

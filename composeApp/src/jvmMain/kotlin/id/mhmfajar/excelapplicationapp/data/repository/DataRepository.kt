@@ -180,9 +180,21 @@ class DataRepository(private val dbHelper: DatabaseHelper) {
 
     // ─── Pivot Aggregation (SQL-level) ───────────────────────────────
 
-    fun getPivotSummaries(filters: List<Pair<String, String>> = emptyList()): List<PivotSummary> {
+    fun getPivotSummaries(
+        filters: List<Pair<String, String>> = emptyList(),
+        ids: Collection<Int>? = null
+    ): List<PivotSummary> {
         val conn = dbHelper.getConnection() ?: return emptyList()
-        val (whereClause, params) = buildWhereClause(filters)
+        val (whereClause, params) = if (ids != null) {
+            if (ids.isEmpty()) return emptyList()
+            val placeholders = ids.joinToString(",") { "?" }
+            val (filterClause, filterParams) = buildWhereClause(filters)
+            val combinedWhere = if (filterClause.isEmpty()) "WHERE id IN ($placeholders)"
+            else "$filterClause AND id IN ($placeholders)"
+            combinedWhere to (filterParams + ids.map { it.toString() })
+        } else {
+            buildWhereClause(filters)
+        }
 
         val query = """
             SELECT
@@ -215,6 +227,37 @@ class DataRepository(private val dbHelper: DatabaseHelper) {
                                 totalAmountPpn = rs.getDouble("total")
                             )
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    fun getDataByIds(ids: Collection<Int>): List<RowDataReport> {
+        val conn = dbHelper.getConnection() ?: return emptyList()
+        if (ids.isEmpty()) return emptyList()
+
+        val placeholders = ids.joinToString(",") { "?" }
+        val query = "SELECT * FROM excel_data WHERE id IN ($placeholders) ORDER BY row_index"
+        return conn.prepareStatement(query).use { pstmt ->
+            ids.forEachIndexed { index, id ->
+                pstmt.setInt(index + 1, id)
+            }
+            pstmt.executeQuery().use { rs -> rs.toRowList() }
+        }
+    }
+
+    fun getAllFilteredIds(filters: List<Pair<String, String>>): List<Int> {
+        val conn = dbHelper.getConnection() ?: return emptyList()
+        val (whereClause, params) = buildWhereClause(filters)
+
+        val query = "SELECT id FROM excel_data $whereClause ORDER BY row_index"
+        return conn.prepareStatement(query).use { pstmt ->
+            pstmt.bindParams(params)
+            pstmt.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) {
+                        add(rs.getInt("id"))
                     }
                 }
             }
@@ -254,6 +297,7 @@ class DataRepository(private val dbHelper: DatabaseHelper) {
     }
 
     private fun mapRow(rs: ResultSet) = RowDataReport(
+        id = rs.getInt("id"),
         salesStore = rs.getString("sales_store"),
         customerName = rs.getString("customer_name"),
         invoiceNumber = rs.getString("invoice_number"),

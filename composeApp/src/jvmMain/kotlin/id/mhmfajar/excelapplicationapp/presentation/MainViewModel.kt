@@ -43,6 +43,9 @@ class MainViewModel {
     var errorMessage: String? by mutableStateOf(null)
         private set
 
+    var selectedIds: Set<Int> by mutableStateOf(emptySet())
+        private set
+
     var uniqueSalesStores: List<String> by mutableStateOf(emptyList())
         private set
     var uniqueCustomerNumbers: List<String> by mutableStateOf(emptyList())
@@ -65,6 +68,7 @@ class MainViewModel {
             isLoading = true
             loadProgress = 0f
             errorMessage = null
+            selectedIds = emptySet()
 
             try {
                 val data = reader.read(file) { progress ->
@@ -128,6 +132,7 @@ class MainViewModel {
     fun filter(filters: List<Pair<String, String>>) {
         currentFilters = filters.filter { it.first.isNotEmpty() && it.second.isNotEmpty() }
         totalCount = repository.getFilteredCount(currentFilters)
+        selectedIds = emptySet()
         currentPage = 0
         loadPage(0)
     }
@@ -137,12 +142,20 @@ class MainViewModel {
             isLoading = true
             loadProgress = 50f
             try {
-                val data = if (currentFilters.isNotEmpty()) {
+                val data = if (selectedIds.isNotEmpty() && selectedIds.size < totalCount) {
+                    repository.getDataByIds(selectedIds)
+                } else if (currentFilters.isNotEmpty()) {
                     repository.filterData(currentFilters)
                 } else {
                     repository.getAllData()
                 }
-                val pivotData = getPivotData()
+
+                val pivotData = if (selectedIds.isNotEmpty() && selectedIds.size < totalCount) {
+                    repository.getPivotSummaries(currentFilters, selectedIds)
+                } else {
+                    getPivotData()
+                }
+
                 writer.write(headers, data, pivotData, file)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -169,6 +182,23 @@ class MainViewModel {
         uniqueCustomerNumbers = emptyList()
         draftFilters = DEFAULT_FILTERS
         dynamicSuggestions = emptyMap()
+        selectedIds = emptySet()
+    }
+
+    fun toggleSelection(id: Int) {
+        selectedIds = if (selectedIds.contains(id)) {
+            selectedIds - id
+        } else {
+            selectedIds + id
+        }
+    }
+
+    fun toggleAllSelection(select: Boolean) {
+        selectedIds = if (select) {
+            repository.getAllFilteredIds(currentFilters).toSet()
+        } else {
+            emptySet()
+        }
     }
 
     /**

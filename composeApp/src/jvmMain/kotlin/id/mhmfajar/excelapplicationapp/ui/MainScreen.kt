@@ -204,14 +204,22 @@ private fun ColumnScope.TableContainer(
                     data = data,
                     onHeaderClick = { vm.sort(it) },
                     sortRules = vm.sortRules,
-                    onEndReached = { vm.loadNextPage() }
+                    onEndReached = { vm.loadNextPage() },
+                    selectedIds = vm.selectedIds,
+                    onToggleSelection = { vm.toggleSelection(it) },
+                    onToggleAllSelection = { vm.toggleAllSelection(it) },
+                    isAllSelected = vm.selectedIds.isNotEmpty() && vm.selectedIds.size == vm.totalCount
                 )
                 ViewMode.REPORT -> ReportTable(
                     headers = headers,
                     data = data,
                     onHeaderClick = { vm.sort(it) },
                     sortRules = vm.sortRules,
-                    onEndReached = { vm.loadNextPage() }
+                    onEndReached = { vm.loadNextPage() },
+                    selectedIds = vm.selectedIds,
+                    onToggleSelection = { vm.toggleSelection(it) },
+                    onToggleAllSelection = { vm.toggleAllSelection(it) },
+                    isAllSelected = vm.selectedIds.isNotEmpty() && vm.selectedIds.size == vm.totalCount
                 )
                 ViewMode.PIVOT -> PivotTable(data = vm.getPivotData())
             }

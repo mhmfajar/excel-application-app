@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.mhmfajar.excelapplicationapp.domain.model.RowDataReport
 import id.mhmfajar.excelapplicationapp.util.NumberFormatter
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 
 /**
  * Represents an item in the report spreadsheet view.
@@ -41,8 +43,13 @@ fun ReportTable(
     data: List<RowDataReport>,
     onHeaderClick: (String) -> Unit,
     sortRules: List<Pair<String, Boolean>>,
-    onEndReached: () -> Unit
+    onEndReached: () -> Unit,
+    selectedIds: Set<Int>,
+    onToggleSelection: (Int) -> Unit,
+    onToggleAllSelection: (Boolean) -> Unit,
+    isAllSelected: Boolean
 ) {
+    val checkboxColumnWidth = 50.dp
     val noColumnWidth = 60.dp
     val columnWidth = 170.dp
 
@@ -53,18 +60,7 @@ fun ReportTable(
     val listState = rememberLazyListState()
     val horizontalScrollState = rememberScrollState()
 
-    val isEndReached by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (layoutInfo.totalItemsCount == 0 || visibleItemsInfo.isEmpty()) false
-            else visibleItemsInfo.last().index >= layoutInfo.totalItemsCount - 2
-        }
-    }
-
-    LaunchedEffect(isEndReached) {
-        if (isEndReached) onEndReached()
-    }
+    InfiniteScrollEffect(listState = listState, onEndReached = onEndReached)
 
     val borderColor = MaterialTheme.colorScheme.outlineVariant
 
@@ -74,7 +70,20 @@ fun ReportTable(
             .horizontalScroll(horizontalScrollState)
     ) {
         // Header
-        Row(modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer)) {
+        Row(
+            modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.width(checkboxColumnWidth).border(0.5.dp, borderColor).padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Checkbox(
+                    checked = isAllSelected,
+                    onCheckedChange = { onToggleAllSelection(it) }
+                )
+            }
+
             Box(
                 modifier = Modifier.width(noColumnWidth).border(0.5.dp, borderColor).padding(8.dp),
                 contentAlignment = Alignment.Center
@@ -121,8 +130,10 @@ fun ReportTable(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(20.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Box(modifier = Modifier.width(checkboxColumnWidth).fillMaxHeight().border(0.5.dp, borderColor))
                             Box(modifier = Modifier.width(noColumnWidth).fillMaxHeight().border(0.5.dp, borderColor))
                             headers.forEach { _ ->
                                 Box(modifier = Modifier.width(columnWidth).fillMaxHeight().border(0.5.dp, borderColor))
@@ -131,7 +142,20 @@ fun ReportTable(
                     }
                     is SpreadsheetItem.Content -> {
                         val row = item.row
-                        Row(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+                        Row(
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier.width(checkboxColumnWidth).border(0.5.dp, borderColor).padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Checkbox(
+                                    checked = selectedIds.contains(row.id),
+                                    onCheckedChange = { row.id?.let { onToggleSelection(it) } }
+                                )
+                            }
+
                             Box(
                                 modifier = Modifier.width(noColumnWidth).border(0.5.dp, borderColor).padding(8.dp),
                                 contentAlignment = Alignment.Center

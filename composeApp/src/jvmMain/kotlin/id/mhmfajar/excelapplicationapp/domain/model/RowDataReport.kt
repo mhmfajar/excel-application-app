@@ -1,6 +1,7 @@
 package id.mhmfajar.excelapplicationapp.domain.model
 
 data class RowDataReport(
+    val id: Int? = null,
     val salesStore: String?,
     val customerName: String?,
     val invoiceNumber: String?,
